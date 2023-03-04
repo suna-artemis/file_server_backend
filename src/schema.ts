@@ -1,69 +1,127 @@
 import { makeExecutableSchema } from '@graphql-tools/schema'
+import { Link, Comment } from '@prisma/client'
+import { GraphQLContext } from './context'
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime'
+import { GraphQLError } from 'graphql'
 
 const typeDefs = /* GraphQL */ `
-  type Query {
-    hello: String!
-    info: String!
-    feed: [Link!]!
-  }
-
-  type Mutation {
-    postLink(url: String!, desc: String!): Link!
-  }
-
   type Link {
     id: ID!
     desc: String!
     url: String!
+    comments: [Comment!]
+  }
+
+  type Comment {
+    id: ID!
+    body: String!
+    linkId: ID!
+    link: Link
+  }
+
+  type Query {
+    info: String!
+    links: [Link!]!
+    link(id: ID!): Link!
+    comments: [Comment!]!
+    getCommentsByLinkId(linkId: ID!): [Comment!]
+  }
+
+  type Mutation {
+    postLink(desc: String!, url: String!): Link!
+    postCommentOnLink(linkId: ID!, body: String!): Comment!
   }
 `
 
-type Link = {
-  id: string
-  url: string
-  desc: string
-}
-
-const links: Link[] = [
-  {
-    id: '1',
-    url: '111https://graphql-yoga.com',
-    desc: '111The easiest way of setting up a GraphQL server',
-  },
-  {
-    id: '2',
-    url: '222https://graphql-yoga.com',
-    desc: '222The easiest way of setting up a GraphQL server',
-  },
-]
-
 const resolvers = {
-  Query: {
-    hello: () => 'Hello, world!',
-    info: () => `This is the API`,
-    feed: () => links,
+  Link: {
+    id: ({ id }: Link) => id,
+    desc: ({ desc }: Link) => desc,
+    url: ({ url }: Link) => url,
   },
-  Mutation: {
-    postLink: (
+  Comment: {
+    id: ({ id }: Comment) => id,
+    body: ({ body }: Comment) => body,
+    linkId: ({ linkId }: Comment) => linkId,
+  },
+  Query: {
+    info: () => 'This is an amazing framework!',
+    links: (parent: unknown, {}: any, { prisma }: GraphQLContext) => {
+      return prisma.link.findMany()
+    },
+    comments: (parent: unknown, {}: any, { prisma }: GraphQLContext) => {
+      return prisma.comment.findMany()
+    },
+    link: (
       parent: unknown,
-      { desc, url }: { desc: string; url: string }
+      { id }: { id: string },
+      { prisma }: GraphQLContext
     ) => {
-      let id = links.length
-      const link: Link = {
-        id: `${id}`,
-        desc,
-        url,
-      }
-      links.push(link)
-      console.log('links :>> ', links)
-      return link
+      return prisma.link.findUniqueOrThrow({
+        where: {
+          id: parseInt(id),
+        },
+      })
+    },
+    getCommentsByLinkId: (
+      parent: unknown,
+      { linkId }: any,
+      { prisma }: GraphQLContext
+    ) => {
+      return prisma.comment.findMany({
+        where: {
+          linkId: parseInt(linkId),
+          // skip count of record pages
+          // skip,
+          // take count of records
+          // take
+        },
+      })
     },
   },
-  // Link: {
-  //   id: ({ id }: Link) => id,
-  //   desc: ({ desc }: Link) => desc,
-  //   url: ({ url }: Link) => url,
-  // },
+  Mutation: {
+    postLink: async (
+      parent: unknown,
+      { desc, url }: { desc: string; url: string },
+      { prisma }: GraphQLContext
+    ) => {
+      const newLink = await prisma.link.create({
+        data: {
+          url,
+          desc,
+        },
+      })
+      return newLink
+    },
+    postCommentOnLink: async (
+      parent: unknown,
+      { linkId, body }: { linkId: string; body: string },
+      { prisma }: GraphQLContext
+    ) => {
+      const comment = await prisma.comment
+        .create({
+          data: {
+            linkId: parseInt(linkId),
+            body,
+          },
+        })
+        // error handle
+        .catch((err: unknown) => {
+          if (
+            err instanceof PrismaClientKnownRequestError &&
+            // @see https://www.prisma.io/docs/reference/api-reference/error-reference#p2003
+            err.code === 'P2003'
+          ) {
+            return Promise.reject(
+              new GraphQLError(
+                `Cannot post comment on non-existing link with id ${linkId}`
+              )
+            )
+          }
+        })
+      return comment
+    },
+  },
 }
 
 export const schema = makeExecutableSchema({

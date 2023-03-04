@@ -7,9 +7,26 @@ generator client {
   provider = "prisma-client-js"
 }
  
+// model Link {
+//   id          Int      @id @default(autoincrement())
+//   createdAt   DateTime @default(now())
+//   desc        String
+//   url         String
+// }
+
 model Link {
   id          Int      @id @default(autoincrement())
   createdAt   DateTime @default(now())
   desc        String
   url         String
+// comments reference to comment list
+  comments    Comment[]
+}
+ 
+model Comment {
+  id        Int      @id @default(autoincrement())
+  body      String
+  linkId    Int?
+// field linkId is reference to Link's id, and link reference to Link instance
+  link      Link?    @relation(fields: [linkId], references: [id])
 }
