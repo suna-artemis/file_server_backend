@@ -3,10 +3,10 @@
 	"version": "0.0.1",
 	"scripts": {
 		"dev": "cross-env NODE_ENV=development ts-node-dev --exit-child --respawn src/index.ts",
-		"start": "cross-env NODE_ENV=production ts-node src/index.ts",
-		"codegen": "graphql-codegen --config codegen.ts"
+		"start": "cross-env NODE_ENV=production ts-node src/index.ts"
 	},
 	"dependencies": {
+		"@graphql-tools/schema": "^9.0.16",
 		"graphql": "^16.6.0",
 		"graphql-yoga": "^3.7.0"
 	},
