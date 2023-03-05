@@ -30,7 +30,7 @@ const typeDefs = /* GraphQL */ `
   type Mutation {
     postLink(desc: String!, url: String!): Link!
     postCommentOnLink(linkId: ID!, body: String!): Comment!
-    uploadFile(file: File!): String
+    uploadFileList(fileList: [File!]!): String!
   }
 `
 // declare scalar File to allow upload file
@@ -123,10 +123,9 @@ const resolvers = {
         })
       return comment
     },
-    uploadFile: async (_: unknown, { file }: { file: File }) => {
-      const textContent = await file.text()
-      console.log('file.name :>> ', file.name)
-      return textContent
+    uploadFileList: async (_: unknown, { fileList }: { fileList: File[] }) => {
+      console.log('fileList :>> ', fileList)
+      return 'fileList'
     },
   },
 }
